@@ -1,58 +1,305 @@
 
 import discord
+import random
+from discord.ext import commands
 
+# Configurações do bot
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(
+    command_prefix="$",
+    intents=intents,
+    help_command=None,
+    case_insensitive=True
+)
 
-@client.event
+COR = discord.Color.blurple()
+
+
+# Bot iniciado
+@bot.event
 async def on_ready():
-    print(f'Bot online! Logado como {client.user}')
+    print(f"Bot online! Logado como {bot.user}")
+    print("Todos os comandos estão funcionando!")
 
-@client.event
-async def on_message(message):
-    if message.author.bot:
+    await bot.change_presence(
+        activity=discord.Game(name="$help | PythonTestDrive")
+    )
+
+
+# Menu de ajuda
+@bot.command()
+async def help(ctx):
+    embed = discord.Embed(
+        title="🤖 PythonTestDrive",
+        description="Olá! Estes são meus comandos:",
+        color=COR
+    )
+
+    embed.add_field(
+        name="📌 Comandos gerais",
+        value=(
+            "`$hello` - Cumprimentar\n"
+            "`$ping` - Ver latência\n"
+            "`$joined` - Data de entrada\n"
+            "`$avatar` - Ver avatar\n"
+            "`$perfil` - Ver perfil\n"
+            "`$servidor` - Informações do servidor"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🎮 Diversão",
+        value=(
+            "`$heh 10` - Repetir he\n"
+            "`$dado` - Jogar dado\n"
+            "`$moeda` - Cara ou coroa\n"
+            "`$escolher pizza | bolo` - Sortear opção"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="🛡️ Moderação",
+        value="`$limpar 10` - Apagar mensagens",
+        inline=False
+    )
+
+    embed.set_footer(text="PythonTestDrive • Criado em Python")
+
+    await ctx.send(embed=embed)
+
+
+# Cumprimentar
+@bot.command()
+async def hello(ctx):
+    await ctx.send(
+        f"👋 Olá, {ctx.author.mention}! Como você está?"
+    )
+
+
+# Ver latência
+@bot.command()
+async def ping(ctx):
+    latencia = round(bot.latency * 1000)
+    await ctx.send(f"🏓 Pong! Latência: {latencia} ms")
+
+
+# Repetir HE
+@bot.command()
+async def heh(ctx, quantidade: int = 5):
+    if quantidade < 1 or quantidade > 100:
+        await ctx.send("Escolha um número de 1 a 100!")
         return
 
-    if message.content == '$hello':
-        await message.channel.send(
-            f'Olá! Eu sou o bot {client.user}!'
+    await ctx.send("he" * quantidade)
+
+
+# Data de entrada
+@bot.command()
+async def joined(ctx):
+    if not isinstance(ctx.author, discord.Member):
+        await ctx.send("Use este comando em um servidor!")
+        return
+
+    data = ctx.author.joined_at
+
+    if data is None:
+        await ctx.send("Não encontrei sua data de entrada.")
+        return
+
+    await ctx.send(
+        f"📅 Você entrou no servidor em "
+        f"{discord.utils.format_dt(data, style='F')}!"
+    )
+
+
+# Avatar
+@bot.command()
+async def avatar(ctx, membro: discord.Member = None):
+    membro = membro or ctx.author
+
+    embed = discord.Embed(
+        title=f"🖼️ Avatar de {membro.display_name}",
+        color=COR
+    )
+
+    embed.set_image(url=membro.display_avatar.url)
+    await ctx.send(embed=embed)
+
+
+# Perfil
+@bot.command()
+async def perfil(ctx, membro: discord.Member = None):
+    membro = membro or ctx.author
+
+    embed = discord.Embed(
+        title=f"👤 Perfil de {membro.display_name}",
+        color=COR
+    )
+
+    embed.add_field(
+        name="Nome",
+        value=str(membro),
+        inline=False
+    )
+
+    embed.add_field(
+        name="ID",
+        value=str(membro.id),
+        inline=False
+    )
+
+    embed.add_field(
+        name="Conta criada",
+        value=discord.utils.format_dt(
+            membro.created_at, style="D"
+        ),
+        inline=False
+    )
+
+    if isinstance(membro, discord.Member) and membro.joined_at:
+        embed.add_field(
+            name="Entrou no servidor",
+            value=discord.utils.format_dt(
+                membro.joined_at, style="D"
+            ),
+            inline=False
         )
 
-    elif message.content.startswith('$heh'):
-        partes = message.content.split()
+    embed.set_thumbnail(url=membro.display_avatar.url)
+    await ctx.send(embed=embed)
 
-        if len(partes) == 1:
-            quantidade = 5
-        else:
-            try:
-                quantidade = int(partes[1])
-            except ValueError:
-                await message.channel.send('Digite um número válido!')
-                return
 
-        if quantidade < 1 or quantidade > 100:
-            await message.channel.send('Escolha um número de 1 a 100.')
-            return
+# Informações do servidor
+@bot.command()
+async def servidor(ctx):
+    if ctx.guild is None:
+        await ctx.send("Use este comando em um servidor!")
+        return
 
-        await message.channel.send('he' * quantidade)
+    guild = ctx.guild
 
-    # Nova função adaptada da documentação
-    elif message.content == '$joined':
-        membro = message.author
+    embed = discord.Embed(
+        title=f"🌍 {guild.name}",
+        color=COR
+    )
 
-        if isinstance(membro, discord.Member) and membro.joined_at:
-            data = discord.utils.format_dt(
-                membro.joined_at, style='F'
-            )
-            await message.channel.send(
-                f'{membro.mention}, você entrou no servidor em {data}!'
-            )
-        else:
-            await message.channel.send(
-                'Não consegui encontrar sua data de entrada.'
-            )
+    embed.add_field(
+        name="Membros",
+        value=str(guild.member_count or "Desconhecido")
+    )
 
-token = input('Cole o NOVO token do bot: ').strip()
-client.run(token)
+    embed.add_field(
+        name="Canais",
+        value=str(len(guild.channels))
+    )
+
+    embed.add_field(
+        name="Criado em",
+        value=discord.utils.format_dt(
+            guild.created_at, style="D"
+        ),
+        inline=False
+    )
+
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+
+    await ctx.send(embed=embed)
+
+
+# Jogar dado
+@bot.command()
+async def dado(ctx, lados: int = 6):
+    if lados < 2 or lados > 1000:
+        await ctx.send("Escolha de 2 a 1000 lados!")
+        return
+
+    numero = random.randint(1, lados)
+    await ctx.send(
+        f"🎲 {ctx.author.mention} tirou **{numero}**!"
+    )
+
+
+# Cara ou coroa
+@bot.command()
+async def moeda(ctx):
+    resultado = random.choice(["Cara", "Coroa"])
+    await ctx.send(f"🪙 Resultado: **{resultado}!**")
+
+
+# Escolher opções
+@bot.command()
+async def escolher(ctx, *, opcoes: str):
+    lista = [
+        item.strip()
+        for item in opcoes.split("|")
+        if item.strip()
+    ]
+
+    if len(lista) < 2 or len(lista) > 10:
+        await ctx.send(
+            "Use de 2 a 10 opções separadas por |"
+        )
+        return
+
+    resultado = random.choice(lista)
+
+    await ctx.send(
+        f"🎯 Eu escolho: **{discord.utils.escape_mentions(resultado)}**!",
+        allowed_mentions=discord.AllowedMentions.none()
+    )
+
+
+# Apagar mensagens
+@bot.command()
+@commands.guild_only()
+@commands.has_permissions(manage_messages=True)
+@commands.bot_has_permissions(manage_messages=True)
+async def limpar(ctx, quantidade: int = 5):
+    if quantidade < 1 or quantidade > 50:
+        await ctx.send("Escolha de 1 a 50 mensagens!")
+        return
+
+    apagadas = await ctx.channel.purge(
+        limit=quantidade + 1
+    )
+
+    await ctx.send(
+        f"🧹 {len(apagadas) - 1} mensagens apagadas!",
+        delete_after=5
+    )
+
+
+# Tratamento de erros
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("Comando desconhecido! Use $help.")
+
+    elif isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Você não tem permissão!")
+
+    elif isinstance(error, commands.BotMissingPermissions):
+        await ctx.send("❌ O bot não tem permissão!")
+
+    elif isinstance(error, commands.NoPrivateMessage):
+        await ctx.send("Use este comando em um servidor!")
+
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Faltam informações no comando!")
+
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Você digitou um valor inválido!")
+
+    else:
+        print(f"Erro no comando: {error}")
+        await ctx.send("Ocorreu um erro ao executar o comando.")
+
+
+# Iniciar o bot
+token = input("Cole seu NOVO token do bot: ").strip()
+bot.run(token)
