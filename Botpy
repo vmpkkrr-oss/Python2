@@ -1,0 +1,58 @@
+
+import discord
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+client = discord.Client(intents=intents)
+
+@client.event
+async def on_ready():
+    print(f'Bot online! Logado como {client.user}')
+
+@client.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    if message.content == '$hello':
+        await message.channel.send(
+            f'Olá! Eu sou o bot {client.user}!'
+        )
+
+    elif message.content.startswith('$heh'):
+        partes = message.content.split()
+
+        if len(partes) == 1:
+            quantidade = 5
+        else:
+            try:
+                quantidade = int(partes[1])
+            except ValueError:
+                await message.channel.send('Digite um número válido!')
+                return
+
+        if quantidade < 1 or quantidade > 100:
+            await message.channel.send('Escolha um número de 1 a 100.')
+            return
+
+        await message.channel.send('he' * quantidade)
+
+    # Nova função adaptada da documentação
+    elif message.content == '$joined':
+        membro = message.author
+
+        if isinstance(membro, discord.Member) and membro.joined_at:
+            data = discord.utils.format_dt(
+                membro.joined_at, style='F'
+            )
+            await message.channel.send(
+                f'{membro.mention}, você entrou no servidor em {data}!'
+            )
+        else:
+            await message.channel.send(
+                'Não consegui encontrar sua data de entrada.'
+            )
+
+token = input('Cole o NOVO token do bot: ').strip()
+client.run(token)
